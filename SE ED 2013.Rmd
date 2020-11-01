@@ -1,0 +1,972 @@
+
+# Status epilepticus in the emergency room
+
+
+
+
+
+
+
+
+## 1. Preparation of software for analysis
+
+
+
+
+Install needed packages
+```{r}
+# install.packages("readr")
+library(readr)
+
+# install.packages("dplyr")
+library(dplyr)
+
+# install.packages("fmsb")
+library(fmsb)
+
+# install.packages("survey")
+library(survey)
+
+# install.packages("srvyr")
+library(srvyr)
+
+# install.packages("icd")
+library(icd)
+```
+
+
+
+
+Increase memory limit to deal with huge databases
+```{r}
+# Initial memory limit
+memory.limit()
+
+# Increase memory limit
+memory.limit(size=60000)
+
+# Check that the memory limit has been increased
+memory.limit()
+```
+
+
+
+
+
+
+
+
+## 2. Data ingestion
+
+NEDS 2013 CORE FILE
+```{r}
+## NEDS 2013 CORE
+
+# Read in the specifications file
+NEDS2013CORESPECIFICATIONS <- read_fwf("D:\\NEDS\\NEDS2013\\FileSpecifications_NEDS_2013_Core.txt",
+                                   fwf_positions(
+                                     start = c(1, 6, 11, 21, 25, 45, 48, 50, 55),
+                                     end =   c(4, 9, 19, 23, 43, 45, 48, 53, 154)
+                                   ),
+                                   skip = 18)
+
+# Define the variables names
+colnames(NEDS2013CORESPECIFICATIONS) <- c("Database name", "Discharge year of data", 
+                                          "File name", "Data element number", 
+                                          "Data element name", "Length of data element",
+                                          "Non-zero number of digits after decimal point for                                              numeric data element",
+                                          "Data element type (Num=numeric; Char=character)",
+                                          "Data element label")
+
+# Read in the database
+NEDS2013COREDATABASE <- read_csv("D:\\NEDS\\NEDS2013\\NEDS_2013_CORE.csv",
+                             col_names=NEDS2013CORESPECIFICATIONS$`Data element name`)
+```
+
+
+
+
+NEDS 2013 ED FILE
+```{r}
+## NEDS 2013 ED
+
+# Read in the specifications file
+NEDS2013EDSPECIFICATIONS <- read_fwf("D:\\NEDS\\NEDS2013\\FileSpecifications_NEDS_2013_ED.txt",
+                                   fwf_positions(
+                                     start = c(1, 6, 11, 21, 25, 45, 48, 50, 55),
+                                     end =   c(4, 9, 19, 23, 43, 45, 48, 53, 154)
+                                   ),
+                                   skip = 18)
+
+# Define the variables names
+colnames(NEDS2013EDSPECIFICATIONS) <- c("Database name", "Discharge year of data", "File name",
+                                        "Data element number", "Data element name", 
+                                        "Length of data element",
+                                        "Non-zero number of digits after decimal point for                                              numeric data element",
+                                        "Data element type (Num=numeric; Char=character)",
+                                        "Data element label")
+
+# Read in the database
+NEDS2013EDDATABASE <- read_csv("D:\\NEDS\\NEDS2013\\NEDS_2013_ED.csv",
+                             col_names=NEDS2013EDSPECIFICATIONS$`Data element name`)
+```
+
+
+
+
+NEDS 2013 HOSPITAL IP
+```{r}
+## NEDS 2013 IP
+
+# Read in the specifications file
+NEDS2013IPSPECIFICATIONS <- read_fwf("D:\\NEDS\\NEDS2013\\FileSpecifications_NEDS_2013_IP.txt",
+                                   fwf_positions(
+                                     start = c(1, 6, 11, 21, 25, 45, 48, 50, 55),
+                                     end =   c(4, 9, 19, 23, 43, 45, 48, 53, 154)
+                                   ),
+                                   skip = 18)
+
+# Define the variables names
+colnames(NEDS2013IPSPECIFICATIONS) <- c("Database name", "Discharge year of data", "File name",
+                                        "Data element number", "Data element name", 
+                                        "Length of data element",
+                                        "Non-zero number of digits after decimal point for                                              numeric data element",
+                                        "Data element type (Num=numeric; Char=character)",
+                                        "Data element label")
+
+# Read in the database
+NEDS2013IPDATABASE <- read_csv("D:\\NEDS\\NEDS2013\\NEDS_2013_IP.csv",
+                             col_names=NEDS2013IPSPECIFICATIONS$`Data element name`)
+```
+
+
+
+
+NEDS 2013 HOSPITAL FILE
+```{r}
+## NEDS 2013 HOSPITAL
+
+# Read in the specifications file
+NEDS2013HOSPITALSPECIFICATIONS <- read_fwf("D:\\NEDS\\NEDS2013\\FileSpecifications_NEDS_2013_Hospital.txt",
+                                   fwf_positions(
+                                     start = c(1, 6, 11, 21, 25, 45, 48, 50, 55),
+                                     end =   c(4, 9, 19, 23, 43, 45, 48, 53, 154)
+                                   ),
+                                   skip = 18)
+
+# Define the variables names
+colnames(NEDS2013HOSPITALSPECIFICATIONS) <- c("Database name", "Discharge year of data", 
+                                              "File name",
+                                              "Data element number", "Data element name", 
+                                              "Length of data element",
+                                              "Non-zero number of digits after decimal point                                                  for numeric data element",
+                                              "Data element type (Num=numeric;                                                                Char=character)",
+                                              "Data element label")
+
+# Read in the database
+NEDS2013HOSPITALDATABASE <- read_csv("D:\\NEDS\\NEDS2013\\NEDS_2013_HOSPITAL.csv",
+                             col_names=NEDS2013HOSPITALSPECIFICATIONS$`Data element name`)
+```
+
+
+
+
+
+
+
+
+## 3. Data preparation
+
+
+
+
+Keep only patients with status epilepticus and merge into a single database: NEDS 2013 SE
+```{r}
+## KEEP ONLY PATIENTS WITH STATUS EPILEPTICUS AS ONE OF THE CODES OR SEIZURE AS THE PRIMARY CODE
+NEDS2013_SE <- NEDS2013COREDATABASE %>% # SE
+  filter(DX1==3453 | DX2==3453 | DX3==3453 | 
+         DX4==3453 | DX5==3453 | DX6==3453 | 
+         DX7==3453 | DX8==3453 | DX9==3453 | 
+         DX10==3453 | DX11==3453 | DX12==3453 |
+         DX13==3453 | DX14==3453 | DX15==3453 |
+         DXCCS1==83) %>% # Add the ED variables from the ED database
+  left_join(., NEDS2013EDDATABASE) %>% # Add the variables for inpatient from the IP database
+  left_join(., NEDS2013IPDATABASE) %>% # Add the variables from the HOSPITAL database
+  left_join(., NEDS2013HOSPITALDATABASE) 
+```
+
+
+
+
+Recode variables
+```{r}
+# Eliminate unneded columns to reduce memory usage
+rm("NEDS2013COREDATABASE", "NEDS2013CORESPECIFICATIONS", "NEDS2013EDDATABASE",  "NEDS2013EDSPECIFICATIONS", "NEDS2013HOSPITALDATABASE", "NEDS2013HOSPITALSPECIFICATIONS", "NEDS2013IPDATABASE", "NEDS2013IPSPECIFICATIONS")
+
+
+# Recode type of seizure emergencies
+NEDS2013_SE <- NEDS2013_SE %>%
+  mutate(seizure_type = factor(
+    case_when(
+    DX1==3453 ~ "SE_principal_diagnosis",
+    DX2==3453 | DX3==3453 | DX4==3453 | DX5==3453 | DX6==3453 | 
+    DX7==3453 | DX8==3453 | DX9==3453 | DX10==3453 | DX11==3453 | DX12==3453 |
+    DX13==3453 | DX14==3453 | DX15==3453 ~ "SE_secondary_diagnosis",
+    TRUE ~ "nonSE_seizures")))
+
+
+# Create variable epilepsy
+NEDS2013_SE$epilepsy <- factor(ifelse(
+    grepl("^345$", NEDS2013_SE$DX1) | grepl("^345$", NEDS2013_SE$DX2) |
+    grepl("^345$", NEDS2013_SE$DX3) | grepl("^345$", NEDS2013_SE$DX4) |
+    grepl("^345$", NEDS2013_SE$DX5) | grepl("^345$", NEDS2013_SE$DX6) |
+    grepl("^345$", NEDS2013_SE$DX7) | grepl("^345$", NEDS2013_SE$DX8) |
+    grepl("^345$", NEDS2013_SE$DX9) | grepl("^345$", NEDS2013_SE$DX10) |
+    grepl("^345$", NEDS2013_SE$DX11) | grepl("^345$", NEDS2013_SE$DX12) |
+    grepl("^345$", NEDS2013_SE$DX13) | grepl("^345$", NEDS2013_SE$DX14) |
+    grepl("^345$", NEDS2013_SE$DX15) | # 345, ICD9 code for epilepsy and recurrent seizures
+    grepl("^3451.*", NEDS2013_SE$DX1) | grepl("^3451.*", NEDS2013_SE$DX2) |
+    grepl("^3451.*", NEDS2013_SE$DX3) | grepl("^3451.*", NEDS2013_SE$DX4) |
+    grepl("^3451.*", NEDS2013_SE$DX5) | grepl("^3451.*", NEDS2013_SE$DX6) |
+    grepl("^3451.*", NEDS2013_SE$DX7) | grepl("^3451.*", NEDS2013_SE$DX8) |
+    grepl("^3451.*", NEDS2013_SE$DX9) | grepl("^3451.*", NEDS2013_SE$DX10) |
+    grepl("^3451.*", NEDS2013_SE$DX11) | grepl("^3451.*", NEDS2013_SE$DX12) |
+    grepl("^3451.*", NEDS2013_SE$DX13) | grepl("^3451.*", NEDS2013_SE$DX14) |
+    grepl("^3451.*", NEDS2013_SE$DX15) | # 3451, ICD9 code for generalized convulsive epilepsy
+    grepl("^3454.*", NEDS2013_SE$DX1) | grepl("^3454.*", NEDS2013_SE$DX2) |
+    grepl("^3454.*", NEDS2013_SE$DX3) | grepl("^3454.*", NEDS2013_SE$DX4) |
+    grepl("^3454.*", NEDS2013_SE$DX5) | grepl("^3454.*", NEDS2013_SE$DX6) |
+    grepl("^3454.*", NEDS2013_SE$DX7) | grepl("^3454.*", NEDS2013_SE$DX8) |
+    grepl("^3454.*", NEDS2013_SE$DX9) | grepl("^3454.*", NEDS2013_SE$DX10) |
+    grepl("^3454.*", NEDS2013_SE$DX11) | grepl("^3454.*", NEDS2013_SE$DX12) |
+    grepl("^3454.*", NEDS2013_SE$DX13) | grepl("^3454.*", NEDS2013_SE$DX14) |
+    grepl("^3454.*", NEDS2013_SE$DX15) | # 3454, ICD9 code for location-related epilepsy
+    grepl("^3455.*", NEDS2013_SE$DX1) | grepl("^3455.*", NEDS2013_SE$DX2) |
+    grepl("^3455.*", NEDS2013_SE$DX3) | grepl("^3455.*", NEDS2013_SE$DX4) |
+    grepl("^3455.*", NEDS2013_SE$DX5) | grepl("^3455.*", NEDS2013_SE$DX6) |
+    grepl("^3455.*", NEDS2013_SE$DX7) | grepl("^3455.*", NEDS2013_SE$DX8) |
+    grepl("^3455.*", NEDS2013_SE$DX9) | grepl("^3455.*", NEDS2013_SE$DX10) |
+    grepl("^3455.*", NEDS2013_SE$DX11) | grepl("^3455.*", NEDS2013_SE$DX12) |
+    grepl("^3455.*", NEDS2013_SE$DX13) | grepl("^3455.*", NEDS2013_SE$DX14) |
+    grepl("^3455.*", NEDS2013_SE$DX15) | # 3455, ICD9 code for location-related epilepsy      
+    grepl("^3456.*", NEDS2013_SE$DX1) | grepl("^3456.*", NEDS2013_SE$DX2) |
+    grepl("^3456.*", NEDS2013_SE$DX3) | grepl("^3456.*", NEDS2013_SE$DX4) |
+    grepl("^3456.*", NEDS2013_SE$DX5) | grepl("^3456.*", NEDS2013_SE$DX6) |
+    grepl("^3456.*", NEDS2013_SE$DX7) | grepl("^3456.*", NEDS2013_SE$DX8) |
+    grepl("^3456.*", NEDS2013_SE$DX9) | grepl("^3456.*", NEDS2013_SE$DX10) |
+    grepl("^3456.*", NEDS2013_SE$DX11) | grepl("^3456.*", NEDS2013_SE$DX12) |
+    grepl("^3456.*", NEDS2013_SE$DX13) | grepl("^3456.*", NEDS2013_SE$DX14) |
+    grepl("^3456.*", NEDS2013_SE$DX15) | # 3456, ICD9 code for infantile spasms  
+    grepl("^3458.*", NEDS2013_SE$DX1) | grepl("^3458.*", NEDS2013_SE$DX2) |
+    grepl("^3458.*", NEDS2013_SE$DX3) | grepl("^3458.*", NEDS2013_SE$DX4) |
+    grepl("^3458.*", NEDS2013_SE$DX5) | grepl("^3458.*", NEDS2013_SE$DX6) |
+    grepl("^3458.*", NEDS2013_SE$DX7) | grepl("^3458.*", NEDS2013_SE$DX8) |
+    grepl("^3458.*", NEDS2013_SE$DX9) | grepl("^3458.*", NEDS2013_SE$DX10) |
+    grepl("^3458.*", NEDS2013_SE$DX11) | grepl("^3458.*", NEDS2013_SE$DX12) |
+    grepl("^3458.*", NEDS2013_SE$DX13) | grepl("^3458.*", NEDS2013_SE$DX14) |
+    grepl("^3458.*", NEDS2013_SE$DX15) | # 3458, ICD9 code for epilepsy and recurrent seizures
+    grepl("^3459.*", NEDS2013_SE$DX1) | grepl("^3459.*", NEDS2013_SE$DX2) |
+    grepl("^3459.*", NEDS2013_SE$DX3) | grepl("^3459.*", NEDS2013_SE$DX4) |
+    grepl("^3459.*", NEDS2013_SE$DX5) | grepl("^3459.*", NEDS2013_SE$DX6) |
+    grepl("^3459.*", NEDS2013_SE$DX7) | grepl("^3459.*", NEDS2013_SE$DX8) |
+    grepl("^3459.*", NEDS2013_SE$DX9) | grepl("^3459.*", NEDS2013_SE$DX10) |
+    grepl("^3459.*", NEDS2013_SE$DX11) | grepl("^3459.*", NEDS2013_SE$DX12) |
+    grepl("^3459.*", NEDS2013_SE$DX13) | grepl("^3459.*", NEDS2013_SE$DX14) |
+    grepl("^3459.*", NEDS2013_SE$DX15), # 3459, ICD9 code for epilepsy unspecified  
+    "yes", "no"))
+  
+
+# Recode hospital features
+NEDS2013_SE <- NEDS2013_SE %>% # Hospital region
+  mutate(HOSP_REGION = factor(recode(HOSP_REGION, 
+                              "1"="Northeast", 
+                              "2"="Midwest", 
+                              "3"="South", 
+                              "4"="West")
+         )) %>% # Hospital teaching status
+  mutate(HOSP_UR_TEACH = factor(recode(HOSP_UR_TEACH, 
+                                "0"="Metropolitan non-teaching", 
+                                "1"="Metropolitan teaching", 
+                                "2"="Non-metropolitan hospital")
+         )) %>% # Hospital control
+  mutate(HOSP_CONTROL = factor(recode(HOSP_CONTROL, 
+                                "0"="Government or private", 
+                                "1"="Government, nonfederal", 
+                                "2"="Private, not for profit",
+                                "3"="Private, investor owned",
+                                "4"="Private")
+         )) %>% # Trauma center
+  mutate(HOSP_TRAUMA = factor(
+    case_when(
+      HOSP_TRAUMA==0 ~ "Not trauma center",
+      TRUE ~ "Trauma center")
+  )) %>% # Urban or rural hospital
+  mutate(hospital_urban_rural = factor(
+    case_when(
+      HOSP_URCAT4==1 ~ "Metropolitan",
+      HOSP_URCAT4==2 ~ "Metropolitan",
+      HOSP_URCAT4==3 ~ "Non-metropolitan",
+      HOSP_URCAT4==4 ~ "Non-metropolitan",
+      HOSP_URCAT4==6 ~ "Non-metropolitan",
+      HOSP_URCAT4==7 ~ "Non-metropolitan",
+      HOSP_URCAT4==8 ~ "Metropolitan",
+      HOSP_URCAT4==9 ~ "Metropolitan")
+  )) %>% # Percentile number of ED visits
+  mutate(PERCENTILE_ED_VISITS = percentile(TOTAL_EDVISITS)) 
+
+
+# Recode demographic features
+NEDS2013_SE <- NEDS2013_SE %>% # Recode NA for AGE missing data (-66)
+  mutate(AGE = replace(AGE, AGE<0, NA)) %>% # Age in categories
+  mutate(age_categories = factor(
+    case_when(
+    AGE==0 ~ "<1",
+    AGE>0 & AGE<=5 ~ "1-5",
+    AGE>5 & AGE<=12 ~ "6-12",
+    AGE>12 & AGE<=20 ~ "13-20",
+    AGE>20 & AGE<=35 ~ "21-35",
+    AGE>35 & AGE<=50 ~ "36-50",
+    AGE>50 & AGE<=65 ~ "51-65",
+    AGE>65 & AGE<=89 ~ "66-89",
+    AGE>89 ~ ">89"),
+    levels = c("<1", "1-5", "6-12", "13-20", "21-35", "36-50", "51-65", "66-89", ">89")
+  )) %>% # Sex in categories
+  mutate(sex_categories = factor(
+    case_when(
+    FEMALE==0 ~ "male",
+    FEMALE==1 ~ "female")
+  )) %>% # Admission during a weekend
+  mutate(admission = factor(
+    case_when(
+    AWEEKEND==1 ~ "weekend",
+    AWEEKEND==0 ~ "weekday")
+  )) %>% # Socioeconomic status
+  mutate(SES = factor(
+    case_when(
+    ZIPINC_QRTL==1 ~ "low",
+    ZIPINC_QRTL==2 ~ "medium-low",
+    ZIPINC_QRTL==3 ~ "medium-high",
+    ZIPINC_QRTL==4 ~ "high")
+  )) %>% # Recode urban or rural
+  mutate(urban_rural = factor(
+    case_when(
+      PL_NCHS==1 ~ "Central counties large metro area",
+      PL_NCHS==2 ~ "Fringe counties large metro area",
+      PL_NCHS==3 ~ "Counties in medium metro area",
+      PL_NCHS==4 ~ "Counties in small metro area",
+      PL_NCHS==5 ~ "Micropolitan counties",
+      PL_NCHS==6 ~ "Not metropolitan or micropolitan counties")
+  ))
+
+
+# Recode covariates
+NEDS2013_SE <- NEDS2013_SE %>% # Recode injury
+  mutate(INJURY = factor(
+    case_when(
+    INJURY==0 ~ "No injury",
+    INJURY==1 ~ "Injury main diagnosis",
+    INJURY==2 ~ "Injury not main diagnosis"),
+    levels = c("No injury", "Injury main diagnosis", "Injury not main diagnosis")
+  )) %>% # Recode multinjury
+  mutate(MULTINJURY = factor(
+    case_when(
+      MULTINJURY==0 ~ "No multinjury",
+      MULTINJURY==1 ~ "Multinjury")
+  )) %>% # Recode primary payer
+  mutate(primary_payer = factor(
+    case_when(
+      PAY1==1 ~ "Medicare",
+      PAY1==2 ~ "Medicaid",
+      PAY1==3 ~ "Private insurance",
+      PAY1==4 ~ "Self-pay",
+      PAY1==5 ~ "No charge",
+      PAY1==6 ~ "Other")
+  ))
+
+
+# Identify respiratory intubation or mechanical ventilation
+NEDS2013_SE <- NEDS2013_SE %>% # Respiratory intubation or mechanical ventilation in the emergency department
+  mutate(intubation_ED = factor(case_when(PR_ED1=="9604" | PR_ED2=="9604" | PR_ED3=="9604" |
+                            PR_ED4=="9604" | PR_ED5=="9604" | PR_ED6=="9604" |
+                            PR_ED7=="9604" | PR_ED8=="9604" | PR_ED9=="9604"|
+                            PR_ED1=="9605" | PR_ED2=="9605" | PR_ED3=="9605" |
+                            PR_ED4=="9605" | PR_ED5=="9605" | PR_ED6=="9605" |
+                            PR_ED7=="9605" | PR_ED8=="9605" | PR_ED9=="9605"|
+                            PR_ED1=="9670" | PR_ED2=="9670" | PR_ED3=="9670" |
+                            PR_ED4=="9670" | PR_ED5=="9670" | PR_ED6=="9670" |
+                            PR_ED7=="9670" | PR_ED8=="9670" | PR_ED9=="9670"|
+                            PR_ED1=="9671" | PR_ED2=="9671" | PR_ED3=="9671" |
+                            PR_ED4=="9671" | PR_ED5=="9671" | PR_ED6=="9671" |
+                            PR_ED7=="9671" | PR_ED8=="9671" | PR_ED9=="9671"|
+                            PR_ED1=="9672" | PR_ED2=="9672" | PR_ED3=="9672" |
+                            PR_ED4=="9672" | PR_ED5=="9672" | PR_ED6=="9672" |
+                            PR_ED7=="9672" | PR_ED8=="9672" | PR_ED9=="9672" ~ "yes", 
+                            TRUE ~ "no"))) %>% # Respiratory intubation or mechanical ventilation as inpatient
+  mutate(intubation_IP = factor(case_when(PR_IP1=="9604" | PR_IP2=="9604" | PR_IP3=="9604" |
+                            PR_IP4=="9604" | PR_IP5=="9604" | PR_IP6=="9604" |
+                            PR_IP7=="9604" | PR_IP8=="9604" | PR_IP9=="9604"|
+                            PR_IP1=="9605" | PR_IP2=="9605" | PR_IP3=="9605" |
+                            PR_IP4=="9605" | PR_IP5=="9605" | PR_IP6=="9605" |
+                            PR_IP7=="9605" | PR_IP8=="9605" | PR_IP9=="9605"|
+                            PR_IP1=="9670" | PR_IP2=="9670" | PR_IP3=="9670" |
+                            PR_IP4=="9670" | PR_IP5=="9670" | PR_IP6=="9670" |
+                            PR_IP7=="9670" | PR_IP8=="9670" | PR_IP9=="9670"|
+                            PR_IP1=="9671" | PR_IP2=="9671" | PR_IP3=="9671" |
+                            PR_IP4=="9671" | PR_IP5=="9671" | PR_IP6=="9671" |
+                            PR_IP7=="9671" | PR_IP8=="9671" | PR_IP9=="9671"|
+                            PR_IP1=="9672" | PR_IP2=="9672" | PR_IP3=="9672" |
+                            PR_IP4=="9672" | PR_IP5=="9672" | PR_IP6=="9672" |
+                            PR_IP7=="9672" | PR_IP8=="9672" | PR_IP9=="9672" ~ "yes", 
+                            TRUE ~ "no"))) %>% # Mechanical ventilation for less than 96 hours (emergency department or inpatient)
+  mutate(ventilationless96h = factor(case_when(PR_ED1=="9671" | PR_ED2=="9671" | PR_ED3=="9671" |
+                            PR_ED4=="9671" | PR_ED5=="9671" | PR_ED6=="9671" |
+                            PR_ED7=="9671" | PR_ED8=="9671" | PR_ED9=="9671"|
+                            PR_IP1=="9671" | PR_IP2=="9671" | PR_IP3=="9671" |
+                            PR_IP4=="9671" | PR_IP5=="9671" | PR_IP6=="9671" |
+                            PR_IP7=="9671" | PR_IP8=="9671" | PR_IP9=="9671" ~ "yes", 
+                            TRUE ~ "no"))) %>% # Mechanical ventilation for 96 hours or more (emergency department or inpatient)
+  mutate(ventilationmore96h = factor(case_when(PR_ED1=="9672" | PR_ED2=="9672" | PR_ED3=="9672" |
+                            PR_ED4=="9672" | PR_ED5=="9672" | PR_ED6=="9672" |
+                            PR_ED7=="9672" | PR_ED8=="9672" | PR_ED9=="9672"|
+                            PR_IP1=="9672" | PR_IP2=="9672" | PR_IP3=="9672" |
+                            PR_IP4=="9672" | PR_IP5=="9672" | PR_IP6=="9672" |
+                            PR_IP7=="9672" | PR_IP8=="9672" | PR_IP9=="9672" ~ "yes", 
+                            TRUE ~ "no"))) %>% # Mechanical ventilation of unspecified duration (emergency department or inpatient)
+  mutate(ventilationdurationunknown = factor(case_when(PR_ED1=="9670" | PR_ED2=="9670" | PR_ED3=="9670" |
+                            PR_ED4=="9670" | PR_ED5=="9670" | PR_ED6=="9670" |
+                            PR_ED7=="9670" | PR_ED8=="9670" | PR_ED9=="9670"|
+                            PR_IP1=="9670" | PR_IP2=="9670" | PR_IP3=="9670" |
+                            PR_IP4=="9670" | PR_IP5=="9670" | PR_IP6=="9670" |
+                            PR_IP7=="9670" | PR_IP8=="9670" | PR_IP9=="9670" ~ "yes", 
+                            TRUE ~ "no")))
+
+
+# Identify electroencephalogram
+NEDS2013_SE <- NEDS2013_SE %>% # Routine electroencephalogram in the emergency department
+  mutate(EEG_ED = factor(case_when(PR_ED1=="8914" | PR_ED2=="8914" | PR_ED3=="8914" |
+                            PR_ED4=="8914" | PR_ED5=="8914" | PR_ED6=="8914" |
+                            PR_ED7=="8914" | PR_ED8=="8914" | PR_ED9=="8914" ~ "yes", 
+                            TRUE ~ "no"))) %>% # Electroencephalographic monitoring in the emergency department
+  mutate(EEGmonitoring_ED = factor(case_when(PR_ED1=="8919" | PR_ED2=="8919" | PR_ED3=="8919" |
+                            PR_ED4=="8919" | PR_ED5=="8919" | PR_ED6=="8919" |
+                            PR_ED7=="8919" | PR_ED8=="8919" | PR_ED9=="8919" ~ "yes", 
+                            TRUE ~ "no"))) %>% # Routine electroencephalogram as inpatient
+  mutate(EEG_IP = factor(case_when(PR_IP1=="8914" | PR_IP2=="8914" | PR_IP3=="8914" |
+                            PR_IP4=="8914" | PR_IP5=="8914" | PR_IP6=="8914" |
+                            PR_IP7=="8914" | PR_IP8=="8914" | PR_IP9=="8914" ~ "yes", 
+                            TRUE ~ "no"))) %>% # Electroencephalographic monitoring as inpatient
+  mutate(EEGmonitoring_IP = factor(case_when(PR_IP1=="8919" | PR_IP2=="8919" | PR_IP3=="8919" |
+                            PR_IP4=="8919" | PR_IP5=="8919" | PR_IP6=="8919" |
+                            PR_IP7=="8919" | PR_IP8=="8919" | PR_IP9=="8919" ~ "yes", 
+                            TRUE ~ "no")))
+  
+
+# Identify neuroimaging
+NEDS2013_SE <- NEDS2013_SE %>% # Head CT in the emergency room
+  mutate(headCT_ED = factor(case_when(PR_ED1=="8703" | PR_ED2=="8703" | PR_ED3=="8703" |
+                            PR_ED4=="8703" | PR_ED5=="8703" | PR_ED6=="8703" |
+                            PR_ED7=="8703" | PR_ED8=="8703" | PR_ED9=="8703" |
+                            PR_ED1=="8704" | PR_ED2=="8704" | PR_ED3=="8704" |
+                            PR_ED4=="8704" | PR_ED5=="8704" | PR_ED6=="8704" |
+                            PR_ED7=="8704" | PR_ED8=="8704" | PR_ED9=="8704"~ "yes", 
+                            TRUE ~ "no"))) %>% # Head CT as inpatient
+  mutate(headCT_IP = factor(case_when(PR_IP1=="8703" | PR_IP2=="8703" | PR_IP3=="8703" |
+                            PR_IP4=="8703" | PR_IP5=="8703" | PR_IP6=="8703" |
+                            PR_IP7=="8703" | PR_IP8=="8703" | PR_IP9=="8703" |
+                            PR_IP1=="8704" | PR_IP2=="8704" | PR_IP3=="8704" |
+                            PR_IP4=="8704" | PR_IP5=="8704" | PR_IP6=="8704" |
+                            PR_IP7=="8704" | PR_IP8=="8704" | PR_IP9=="8704"~ "yes", 
+                            TRUE ~ "no"))) %>% # Brain MRI in the emergency room
+  mutate(brainMRI_ED = factor(case_when(PR_ED1=="8891" | PR_ED2=="8891" | PR_ED3=="8891" |
+                            PR_ED4=="8891" | PR_ED5=="8891" | PR_ED6=="8891" |
+                            PR_ED7=="8891" | PR_ED8=="8891" | PR_ED9=="8891" ~ "yes", 
+                            TRUE ~ "no"))) %>% # Brain MRI as inpatient
+  mutate(brainMRI_IP = factor(case_when(PR_IP1=="8891" | PR_IP2=="8891" | PR_IP3=="8891" |
+                            PR_IP4=="8891" | PR_IP5=="8891" | PR_IP6=="8891" |
+                            PR_IP7=="8891" | PR_IP8=="8891" | PR_IP9=="8891" ~ "yes", 
+                            TRUE ~ "no"))) 
+
+
+# Identify lumbar puncture
+NEDS2013_SE <- NEDS2013_SE %>% # Lumbar puncture in the emergency department
+  mutate(LP_ED = factor(case_when(PR_ED1=="0331" | PR_ED2=="0331" | PR_ED3=="0331" |
+                            PR_ED4=="0331" | PR_ED5=="0331" | PR_ED6=="0331" |
+                            PR_ED7=="0331" | PR_ED8=="0331" | PR_ED9=="0331" ~ "yes", 
+                            TRUE ~ "no"))) %>% # Lumbar puncture as inpatient
+  mutate(LP_IP = factor(case_when(PR_IP1=="0331" | PR_IP2=="0331" | PR_IP3=="0331" |
+                            PR_IP4=="0331" | PR_IP5=="0331" | PR_IP6=="0331" |
+                            PR_IP7=="0331" | PR_IP8=="0331" | PR_IP9=="0331" ~ "yes", 
+                            TRUE ~ "no")))
+  
+
+# Recode outcomes
+NEDS2013_SE <- NEDS2013_SE %>% # Disposition from the ED
+  mutate(ED_outcome = factor(case_when(
+    DISP_ED==1 ~ "Routine discharge",
+    DISP_ED==2 ~ "Transfer to another hospital",
+    DISP_ED==5 | DISP_ED==6 ~ "Discharge to long-term facility or health care home",
+    DISP_ED==7 ~ "Discharge against medical advice",
+    DISP_ED==9 ~ "Hospital admission",
+    DISP_ED==20 ~ "Death in the ED"
+    ))) %>% # Hospital admission binary
+  mutate(ED_hospital_admission = factor(case_when(
+    DISP_ED==9 ~ "yes",
+    TRUE ~ "no"))) %>% # Transfer to another hospital binary
+  mutate(ED_hospital_transfer = factor(case_when(
+    DISP_ED==2 ~ "yes",
+    TRUE ~ "no"))) %>% # Recode NA for length of stay missing data (<0)
+  mutate(LOS_IP = replace(LOS_IP, LOS_IP<0, NA)) %>% # Mortality
+  mutate(death = factor(recode(DIED_VISIT,
+    "0"="No",
+    "1"="Died in ED",
+    "2"="Died in the hospital"
+  ))) %>% # Mortality yes/no
+  mutate(deathyesno = factor(recode(DIED_VISIT,
+     "0"="No",
+     "1"="Yes",
+     "2"="Yes"))) %>% # Total charges
+  mutate(charges = case_when(
+    HCUPFILE=="SEDD" ~ TOTCHG_ED,
+    HCUPFILE=="SID" ~ TOTCHG_IP
+  )) %>% # Eliminate charges < 0
+  mutate(charges = if_else(charges>=0, charges, NA_real_))
+```
+
+
+
+
+Create the survey object (weighting from the sample to the population)
+```{r}
+NEDS2013_SE_survey <- NEDS2013_SE %>% as_survey_design(ids=KEY_ED, strata=NEDS_STRATUM, weights=DISCWT, nest=TRUE)
+```
+
+
+
+
+
+
+
+
+## 4. Demographic and clinical characteristics
+
+
+
+
+Dimensions of the data
+```{r}
+# Unweighted sample
+unweighted_sample <- NEDS2013_SE %>% 
+  group_by(seizure_type) %>% # Group by seizure_type
+  summarize(number=n()) %>% # Number
+  mutate(proportion=number/sum(number)) # Proportion
+unweighted_sample
+
+# Weighted population
+total_population_results <- NEDS2013_SE_survey %>% 
+  group_by(seizure_type) %>% summarize( # Group by seizure_type
+    number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)) # Proportion
+total_population_results  
+```
+
+
+
+
+Demographic characteristics
+```{r}
+# Age
+age_results <- bind_rows(
+  NEDS2013_SE_survey %>% summarize(percentile=survey_quantile(AGE, quantiles=c(0.25, 0.5, 0.75), na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type) %>% summarize(percentile=survey_quantile(AGE, quantiles=c(0.25, 0.5, 0.75), na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+age_results
+
+# Age categories
+age_categories_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(age_categories) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, age_categories) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+age_categories_results
+
+# Sex
+sex_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(sex_categories) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, sex_categories) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+sex_results
+
+# Socioeconomic status
+SES_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(SES) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, SES) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+SES_results
+
+# Primary payer
+payer_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(primary_payer) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, primary_payer) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+payer_results
+
+# Admission weekend
+weekend_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(admission) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, admission) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+weekend_results
+
+# Hospital region
+hosp_region_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(HOSP_REGION) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, HOSP_REGION) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+hosp_region_results
+
+# Hospital teaching status
+hosp_teaching_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(HOSP_UR_TEACH) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, HOSP_UR_TEACH) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+hosp_teaching_results
+```
+
+
+
+
+Clinical characteristics
+```{r}
+# Intubation in the emergency department
+intubation_ED_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(intubation_ED) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, intubation_ED) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+intubation_ED_results
+
+# Intubation in the hospital
+intubation_IP_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(intubation_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, intubation_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+intubation_IP_results
+
+# Ventilation less than 96 hours
+ventilationless96h_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(ventilationless96h) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, ventilationless96h) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+ventilationless96h_results
+
+# Ventilation more than 96 hours
+ventilationmore96h_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(ventilationmore96h) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, ventilationmore96h) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+ventilationmore96h_results
+
+# Routine EEG in the hospital
+EEG_IP_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(EEG_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, EEG_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+EEG_IP_results
+
+# EEG monitoring in the hospital
+EEGmonitoring_IP_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(EEGmonitoring_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, EEGmonitoring_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+EEGmonitoring_IP_results
+
+# Head CT in the emergency department
+headCT_ED_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(headCT_ED) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, headCT_ED) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+headCT_ED_results
+
+# Head CT in the hospital
+headCT_IP_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(headCT_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, headCT_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+headCT_IP_results
+
+# Brain MRI in the hospital
+brainMRI_IP_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(brainMRI_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, brainMRI_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+brainMRI_IP_results
+
+# Lumbar puncture in the emergency department
+LP_ED_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(LP_ED) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, LP_ED) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+LP_ED_results
+
+# Lumbar puncture in the hospital
+LP_IP_results <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(LP_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, LP_IP) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+LP_IP_results
+```
+
+
+
+
+Principal diagnosis in patients with secondary SE
+```{r}
+# Principal diagnosis in patients with secondary SE
+principal_diagnosis <- NEDS2013_SE_survey %>% 
+  filter(seizure_type=="SE_secondary_diagnosis") %>% # Keep only the secondary SE cases 
+  group_by(DX1) %>% # Frequencies of each diagnostic code
+  summarize(number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+            proportion=survey_mean(na.rm=TRUE, vartype=NULL)) %>% # Proportion
+  arrange(desc(number)) %>% # Sort by number
+  mutate(DX1=explain_code(DX1, condense=FALSE)) # Transform ICD9 codes to names
+head(principal_diagnosis)
+
+# Distribution of principal diagnoses in patients with secondary SE by age range: <1yo
+principal_diagnosis1yo <- NEDS2013_SE_survey %>% 
+  filter(seizure_type=="SE_secondary_diagnosis", age_categories=="<1") %>% # Keep only the secondary SE cases and only patients <1yo
+  group_by(DX1) %>% # Frequencies of each diagnostic code
+  summarize(number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+            proportion=survey_mean(na.rm=TRUE, vartype=NULL)) %>% # Proportion
+  arrange(desc(number)) %>% # Sort by number
+  mutate(DX1=explain_code(DX1, condense=FALSE)) # Transform ICD9 codes to names
+head(principal_diagnosis1yo)
+
+# Distribution of principal diagnoses in patients with secondary SE by age range: 1-5yo
+principal_diagnosis1_5yo <- NEDS2013_SE_survey %>% 
+  filter(seizure_type=="SE_secondary_diagnosis", age_categories=="1-5") %>% # Keep only the secondary SE cases and only patients 1-5yo
+  group_by(DX1) %>% # Frequencies of each diagnostic code
+  summarize(number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+            proportion=survey_mean(na.rm=TRUE, vartype=NULL)) %>% # Proportion
+  arrange(desc(number)) %>% # Sort by number
+  mutate(DX1=explain_code(DX1, condense=FALSE)) # Transform ICD9 codes to names
+head(principal_diagnosis1_5yo)
+
+# Distribution of principal diagnoses in patients with secondary SE by age range: 6-12yo
+principal_diagnosis6_12yo <- NEDS2013_SE_survey %>% 
+  filter(seizure_type=="SE_secondary_diagnosis", age_categories=="6-12") %>% # Keep only the secondary SE cases and only patients 6-12yo
+  group_by(DX1) %>% # Frequencies of each diagnostic code
+  summarize(number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+            proportion=survey_mean(na.rm=TRUE, vartype=NULL)) %>% # Proportion
+  arrange(desc(number)) %>% # Sort by number
+  mutate(DX1=explain_code(DX1, condense=FALSE)) # Transform ICD9 codes to names
+head(principal_diagnosis6_12yo)
+
+# Distribution of principal diagnoses in patients with secondary SE by age range: 13-20yo
+principal_diagnosis13_20yo <- NEDS2013_SE_survey %>% 
+  filter(seizure_type=="SE_secondary_diagnosis", age_categories=="13-20") %>% # Keep only the secondary SE cases and only patients 13-20yo
+  group_by(DX1) %>% # Frequencies of each diagnostic code
+  summarize(number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+            proportion=survey_mean(na.rm=TRUE, vartype=NULL)) %>% # Proportion
+  arrange(desc(number)) %>% # Sort by number
+  mutate(DX1=explain_code(DX1, condense=FALSE)) # Transform ICD9 codes to names
+head(principal_diagnosis13_20yo)
+
+# Distribution of principal diagnoses in patients with secondary SE by age range: 21-35yo
+principal_diagnosis21_35yo <- NEDS2013_SE_survey %>% 
+  filter(seizure_type=="SE_secondary_diagnosis", age_categories=="21-35") %>% # Keep only the secondary SE cases and only patients 21-35yo
+  group_by(DX1) %>% # Frequencies of each diagnostic code
+  summarize(number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+            proportion=survey_mean(na.rm=TRUE, vartype=NULL)) %>% # Proportion
+  arrange(desc(number)) %>% # Sort by number
+  mutate(DX1=explain_code(DX1, condense=FALSE)) # Transform ICD9 codes to names
+head(principal_diagnosis21_35yo)
+
+# Distribution of principal diagnoses in patients with secondary SE by age range: 36-50yo
+principal_diagnosis36_50yo <- NEDS2013_SE_survey %>% 
+  filter(seizure_type=="SE_secondary_diagnosis", age_categories=="36-50") %>% # Keep only the secondary SE cases and only patients 36-50yo
+  group_by(DX1) %>% # Frequencies of each diagnostic code
+  summarize(number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+            proportion=survey_mean(na.rm=TRUE, vartype=NULL)) %>% # Proportion
+  arrange(desc(number)) %>% # Sort by number
+  mutate(DX1=explain_code(DX1, condense=FALSE)) # Transform ICD9 codes to names
+head(principal_diagnosis36_50yo)
+
+# Distribution of principal diagnoses in patients with secondary SE by age range: 51-65yo
+principal_diagnosis51_65yo <- NEDS2013_SE_survey %>% 
+  filter(seizure_type=="SE_secondary_diagnosis", age_categories=="51-65") %>% # Keep only the secondary SE cases and only patients 51-65yo
+  group_by(DX1) %>% # Frequencies of each diagnostic code
+  summarize(number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+            proportion=survey_mean(na.rm=TRUE, vartype=NULL)) %>% # Proportion
+  arrange(desc(number)) %>% # Sort by number
+  mutate(DX1=explain_code(DX1, condense=FALSE)) # Transform ICD9 codes to names
+head(principal_diagnosis51_65yo)
+
+# Distribution of principal diagnoses in patients with secondary SE by age range: 66-89yo
+principal_diagnosis66_89yo <- NEDS2013_SE_survey %>% 
+  filter(seizure_type=="SE_secondary_diagnosis", age_categories=="66-89") %>% # Keep only the secondary SE cases and only patients 66-89yo
+  group_by(DX1) %>% # Frequencies of each diagnostic code
+  summarize(number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+            proportion=survey_mean(na.rm=TRUE, vartype=NULL)) %>% # Proportion
+  arrange(desc(number)) %>% # Sort by number
+  mutate(DX1=explain_code(DX1, condense=FALSE)) # Transform ICD9 codes to names
+head(principal_diagnosis66_89yo)
+
+# Distribution of principal diagnoses by age range: >89yo
+principal_diagnosis89yo <- NEDS2013_SE_survey %>% 
+  filter(seizure_type=="SE_secondary_diagnosis", age_categories==">89") %>% # Keep only the secondary SE cases and only patients >89yo
+  group_by(DX1) %>% # Frequencies of each diagnostic code
+  summarize(number=survey_total(na.rm=TRUE, vartype=NULL), # Number
+            proportion=survey_mean(na.rm=TRUE, vartype=NULL)) %>% # Proportion
+  arrange(desc(number)) %>% # Sort by number
+  mutate(DX1=explain_code(DX1, condense=FALSE)) # Transform ICD9 codes to names
+head(principal_diagnosis89yo)
+```
+
+
+
+
+
+
+
+
+## 5. Study outcomes
+
+
+
+
+Outcomes
+```{r}
+# Disposition from the ED
+ED_disposition <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(ED_outcome) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, ED_outcome) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+ED_disposition
+
+# Hospital admission multivariable
+hospital_admission_multivariable <- svyglm(ED_hospital_admission ~ seizure_type + age_categories + sex_categories + INJURY + MULTINJURY + NECODE + NDX + primary_payer + urban_rural + SES + HOSP_REGION + HOSP_CONTROL + HOSP_TRAUMA + HOSP_UR_TEACH + hospital_urban_rural, family=quasibinomial, design=NEDS2013_SE_survey)
+summary(hospital_admission_multivariable)
+exp(cbind("Odds ratio" = coef(hospital_admission_multivariable), confint.default(hospital_admission_multivariable, level = 0.95)))
+
+# Hospital transfer multivariable
+hospital_transfer_multivariable <- svyglm(ED_hospital_transfer ~ seizure_type + age_categories + sex_categories + INJURY + MULTINJURY + NECODE + NDX + primary_payer + urban_rural + SES + HOSP_REGION + HOSP_CONTROL + HOSP_TRAUMA + HOSP_UR_TEACH + hospital_urban_rural, family=quasibinomial, design=NEDS2013_SE_survey)
+summary(hospital_transfer_multivariable)
+exp(cbind("Odds ratio" = coef(hospital_transfer_multivariable), confint.default(hospital_transfer_multivariable, level = 0.95)))
+
+
+# Length of stay if admitted
+LOS_outcome <- bind_rows(
+  NEDS2013_SE_survey %>% summarize(
+    survey_quantile(LOS_IP, c(0.25, 0.5, 0.75), vartype=NULL, na.rm=TRUE)), # Total population
+  NEDS2013_SE_survey %>% group_by (seizure_type) %>% 
+    summarize(
+    survey_quantile(LOS_IP, c(0.25, 0.5, 0.75), vartype=NULL, na.rm=TRUE)) # Subgroups by seizure_type
+)
+LOS_outcome
+
+LOS_multivariable <- svyglm(LOS_IP ~ seizure_type + age_categories + sex_categories + INJURY + MULTINJURY + NECODE + NDX + primary_payer + urban_rural + SES + HOSP_REGION + HOSP_CONTROL + HOSP_TRAUMA + HOSP_UR_TEACH + hospital_urban_rural + intubation_IP + ventilationless96h + ventilationmore96h, design=NEDS2013_SE_survey)
+summary(LOS_multivariable)
+
+
+
+# Death
+death_outcome <- bind_rows(
+  NEDS2013_SE_survey %>% group_by(death) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL)), # Total population
+  NEDS2013_SE_survey %>% group_by(seizure_type, death) %>% summarize(
+    number=survey_total(na.rm=TRUE, vartype=NULL), 
+    proportion=survey_mean(na.rm=TRUE, vartype=NULL))) # Subgroups by seizure_type
+death_outcome
+
+
+# Multivariable regression for death
+death_multivariable <- svyglm(deathyesno ~ seizure_type + age_categories + sex_categories + INJURY + MULTINJURY + NECODE + NDX + primary_payer + urban_rural + SES + HOSP_REGION + HOSP_CONTROL + HOSP_TRAUMA + HOSP_UR_TEACH + hospital_urban_rural+ intubation_IP + ventilationless96h + ventilationmore96h, family=quasibinomial, design=NEDS2013_SE_survey)
+summary(death_multivariable)
+exp(cbind("Odds ratio" = coef(death_multivariable), confint.default(death_multivariable, level = 0.95)))
+
+
+# Charges
+charges_outcome <- bind_rows(
+  NEDS2013_SE_survey %>% summarize(
+    survey_quantile(charges, c(0.25, 0.5, 0.75), vartype=NULL, na.rm=TRUE)), # Total population
+  NEDS2013_SE_survey %>% group_by (seizure_type) %>% 
+    summarize(
+    survey_quantile(charges, c(0.25, 0.5, 0.75), vartype=NULL, na.rm=TRUE)) # Subgroups by seizure_type
+)
+charges_outcome
+
+
+# Multivariable regression for charges
+charges_multivariable <- svyglm(charges ~ seizure_type + age_categories + sex_categories + INJURY + MULTINJURY + NECODE + NDX + primary_payer + urban_rural + SES + HOSP_REGION + HOSP_CONTROL + HOSP_TRAUMA + HOSP_UR_TEACH + hospital_urban_rural + intubation_IP + ventilationless96h + ventilationmore96h, design=NEDS2013_SE_survey)
+summary(charges_multivariable)
+
+
+# Total charges
+total_charges_outcome <- bind_rows(
+  NEDS2013_SE_survey %>% summarize(
+    total_charges = survey_total(charges, vartype=NULL, na.rm=TRUE)), # Total population
+  NEDS2013_SE_survey %>% group_by (seizure_type) %>% 
+    summarize(
+    total_charges_by_subgroup = survey_total(charges, vartype=NULL, na.rm=TRUE)) # Subgroups by seizure_type
+)
+total_charges_outcome
+
+total_charges_by_subgroup_proportion <- total_charges_outcome$total_charges_by_subgroup / sum(total_charges_outcome$total_charges_by_subgroup, na.rm=TRUE)
+total_charges_by_subgroup_proportion
+```
+

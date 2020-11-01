@@ -1,0 +1,235 @@
+
+# Status epilepticus in the emergency room: cumulative data
+
+
+
+
+
+
+
+
+## 1. Preparation of software for analysis
+
+
+
+
+Install needed packages
+```{r}
+# install.packages("readr")
+library(readr)
+
+# install.packages("dplyr")
+library(dplyr)
+
+# install.packages("ggplot2")
+library(ggplot2)
+
+# install.packages("plotly")
+library(plotly)
+```
+
+
+
+
+
+
+
+
+## 2. Data ingestion
+
+
+
+
+```{r}
+# Read in the database
+cumulative_data <- read_csv("D:\\SE ED\\Cumulative data\\cumulative.csv")
+```
+
+
+
+
+
+
+
+
+## 3. Figures
+
+
+
+
+Age
+```{r}
+# Age
+cumulative_plot_age <- ggplot(data=cumulative_data) + 
+  # Primary SE
+  geom_line(aes(x=Year, y=PSE_Age_median), color="red", size=2) +
+  # Secondary SE
+  geom_line(aes(x=Year, y=SSE_Age_median), color="blue", size=2) +
+  # Non-SE seizures
+  geom_line(aes(x=Year, y=NSE_Age_median), color="green", size=2) + 
+  # Graph appearance
+  theme(panel.border=element_blank(), panel.grid.major=element_blank(),
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Median age (years)") + ylim(0, 80) 
+cumulative_plot_age
+ggplotly(cumulative_plot_age)
+```
+
+
+
+
+Hospital admission
+```{r}
+# Hospital admission
+cumulative_plot_admission <- ggplot(data=cumulative_data) + 
+  # Primary SE
+  geom_line(aes(x=Year, y=PSE_Hospital_admission), color="red", size=2) +
+  # Secondary SE
+  geom_line(aes(x=Year, y=SSE_Hospital_admission), color="blue", size=2) +
+  # Non-SE seizures
+  geom_line(aes(x=Year, y=NSE_Hospital_admission), color="green", size=2) + 
+  # Graph appearance
+  theme(panel.border=element_blank(), panel.grid.major=element_blank(),
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Hospital Admission (%)") + ylim(0, 100) 
+cumulative_plot_admission
+ggplotly(cumulative_plot_admission)
+```
+
+
+
+
+Hospital admission multivariable
+```{r}
+# Hospital admission multivariable
+cumulative_plot_admission_multivariable <- ggplot(data=cumulative_data) + 
+  # Primary SE
+  geom_line(aes(x=Year, y=PSE_OR_admission), color="red", size=2) +
+  # Secondary SE
+  geom_line(aes(x=Year, y=SSE_OR_admission), color="blue", size=2) +
+  # Non-SE seizures
+  geom_line(aes(x=Year, y=NSE_OR_admission), color="green", size=2) + 
+  # Graph appearance
+  theme(panel.border=element_blank(), panel.grid.major=element_blank(),
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Hospital Admission (Odds ratio)") + ylim(0, 10) 
+cumulative_plot_admission_multivariable
+ggplotly(cumulative_plot_admission_multivariable)
+```
+
+
+
+
+Mortality
+```{r}
+# Mortality
+cumulative_plot_mortality <- ggplot(data=cumulative_data) + 
+  # Primary SE
+  geom_line(aes(x=Year, y=PSE_Mortality), color="red", size=2) +
+  # Secondary SE
+  geom_line(aes(x=Year, y=SSE_Mortality), color="blue", size=2) +
+  # Non-SE seizures
+  geom_line(aes(x=Year, y=NSE_Mortality), color="green", size=2) + 
+  # Graph appearance
+  theme(panel.border=element_blank(), panel.grid.major=element_blank(),
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Mortality (%)") + ylim(0, 20) 
+cumulative_plot_mortality
+ggplotly(cumulative_plot_mortality)
+```
+
+
+
+
+Mortality multivariable
+```{r}
+# Mortality multivariable
+cumulative_plot_mortality_multivariable <- ggplot(data=cumulative_data) + 
+  # Primary SE
+  geom_line(aes(x=Year, y=PSE_OR_Mortality), color="red", size=2) +
+  # Secondary SE
+  geom_line(aes(x=Year, y=SSE_OR_Mortality), color="blue", size=2) +
+  # Non-SE seizures
+  geom_line(aes(x=Year, y=NSE_OR_Mortality), color="green", size=2) + 
+  # Graph appearance
+  theme(panel.border=element_blank(), panel.grid.major=element_blank(),
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Mortality (Odds ratio)") + ylim(0, 20) 
+cumulative_plot_mortality_multivariable
+ggplotly(cumulative_plot_mortality_multivariable)
+```
+
+
+
+
+Charges
+```{r}
+# Charges
+cumulative_plot_charges <- ggplot(data=cumulative_data) + 
+  # Primary SE
+  geom_line(aes(x=Year, y=PSE_charges_median), color="red", size=2) +
+  # Secondary SE
+  geom_line(aes(x=Year, y=SSE_charges_median), color="blue", size=2) +
+  # Non-SE seizures
+  geom_line(aes(x=Year, y=NSE_charges_median), color="green", size=2) + 
+  # Graph appearance
+  theme(panel.border=element_blank(), panel.grid.major=element_blank(),
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Charges (2020 USA $)") + ylim(0, 75000) 
+cumulative_plot_charges
+ggplotly(cumulative_plot_charges)
+```
+
+
+
+
+Charges percent change
+```{r}
+# Charges percent change
+# Calculate the percent changes in median charges for primary SE
+cumulative_data$PSE_percent_charges_change[1] <- 0
+for (i in 2 : dim(cumulative_data)[1]) {
+  cumulative_data$PSE_percent_charges_change[i] <- ((cumulative_data$PSE_charges_median[i] - cumulative_data$PSE_charges_median[i-1]) / cumulative_data$PSE_charges_median[i-1]) * 100
+}
+
+# Calculate the percent changes in median charges for secondary SE
+cumulative_data$SSE_percent_charges_change[1] <- 0
+for (i in 2 : dim(cumulative_data)[1]) {
+  cumulative_data$SSE_percent_charges_change[i] <- ((cumulative_data$SSE_charges_median[i] - cumulative_data$SSE_charges_median[i-1]) / cumulative_data$SSE_charges_median[i-1]) * 100
+}
+
+# Calculate the percent changes in median charges for non-SE seizures
+cumulative_data$NSE_percent_charges_change[1] <- 0
+for (i in 2 : dim(cumulative_data)[1]) {
+  cumulative_data$NSE_percent_charges_change[i] <- ((cumulative_data$NSE_charges_median[i] - cumulative_data$NSE_charges_median[i-1]) / cumulative_data$NSE_charges_median[i-1]) * 100
+}
+
+
+cumulative_plot_charges_percentage <- ggplot(data=cumulative_data) + 
+  # Primary SE
+  geom_line(aes(x=Year, y=PSE_percent_charges_change), color="red", size=2) +
+  # Secondary SE
+  geom_line(aes(x=Year, y=SSE_percent_charges_change), color="blue", size=2) +
+  # Non-SE seizures
+  geom_line(aes(x=Year, y=NSE_percent_charges_change), color="green", size=2) + 
+  # Graph appearance
+  theme(panel.border=element_blank(), panel.grid.major=element_blank(),
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Changes in median charges (%)") + ylim(-5, 20) 
+cumulative_plot_charges_percentage
+ggplotly(cumulative_plot_charges_percentage)
+```
+
+
+
+
+Charges difference
+```{r}
+# Charges difference
+cumulative_plot_charges_difference <- ggplot(data=cumulative_data) + 
+  # Primary SE
+  geom_line(aes(x=Year, y=PSE_charges_difference), color="red", size=2) +
+  # Secondary SE
+  geom_line(aes(x=Year, y=SSE_charges_difference), color="blue", size=2) +
+  # Non-SE seizures
+  geom_line(aes(x=Year, y=NSE_charges_difference), color="green", size=2) + 
+  # Graph appearance
+  theme(panel.border=element_blank(), panel.grid.major=element_blank(),
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Difference in charges (2020 USA $)") + ylim(0, 45000) 
+cumulative_plot_charges_difference
+ggplotly(cumulative_plot_charges_difference)
+```
+
