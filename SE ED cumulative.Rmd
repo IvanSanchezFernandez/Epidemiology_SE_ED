@@ -69,7 +69,7 @@ cumulative_plot_age <- ggplot(data=cumulative_data) +
   geom_line(aes(x=Year, y=NSE_Age_median), color="green", size=2) + 
   # Graph appearance
   theme(panel.border=element_blank(), panel.grid.major=element_blank(),
-panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Median age (years)") + ylim(0, 80) 
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold"), axis.title.x = element_text(margin = margin(t=15, r=0, b=0, l=0)), axis.title.y = element_text(margin = margin(t=0, r=15, b=0, l=0))) + xlab("Year") + ylab("Median age (years)") + ylim(0, 80) 
 cumulative_plot_age
 ggplotly(cumulative_plot_age)
 ```
@@ -89,7 +89,7 @@ cumulative_plot_admission <- ggplot(data=cumulative_data) +
   geom_line(aes(x=Year, y=NSE_Hospital_admission), color="green", size=2) + 
   # Graph appearance
   theme(panel.border=element_blank(), panel.grid.major=element_blank(),
-panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Hospital Admission (%)") + ylim(0, 100) 
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold"), axis.title.x = element_text(margin = margin(t=15, r=0, b=0, l=0)), axis.title.y = element_text(margin = margin(t=0, r=15, b=0, l=0))) + xlab("Year") + ylab("Hospital Admission (%)") + ylim(0, 100) 
 cumulative_plot_admission
 ggplotly(cumulative_plot_admission)
 ```
@@ -109,7 +109,7 @@ cumulative_plot_admission_multivariable <- ggplot(data=cumulative_data) +
   geom_line(aes(x=Year, y=NSE_OR_admission), color="green", size=2) + 
   # Graph appearance
   theme(panel.border=element_blank(), panel.grid.major=element_blank(),
-panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Hospital Admission (Odds ratio)") + ylim(0, 10) 
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold"), axis.title.x = element_text(margin = margin(t=15, r=0, b=0, l=0)), axis.title.y = element_text(margin = margin(t=0, r=15, b=0, l=0))) + xlab("Year") + ylab("Hospital Admission (Odds ratio)") + ylim(0, 10) 
 cumulative_plot_admission_multivariable
 ggplotly(cumulative_plot_admission_multivariable)
 ```
@@ -129,7 +129,7 @@ cumulative_plot_mortality <- ggplot(data=cumulative_data) +
   geom_line(aes(x=Year, y=NSE_Mortality), color="green", size=2) + 
   # Graph appearance
   theme(panel.border=element_blank(), panel.grid.major=element_blank(),
-panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Mortality (%)") + ylim(0, 20) 
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold"), axis.title.x = element_text(margin = margin(t=15, r=0, b=0, l=0)), axis.title.y = element_text(margin = margin(t=0, r=15, b=0, l=0))) + xlab("Year") + ylab("Mortality (%)") + ylim(0, 20) 
 cumulative_plot_mortality
 ggplotly(cumulative_plot_mortality)
 ```
@@ -149,7 +149,7 @@ cumulative_plot_mortality_multivariable <- ggplot(data=cumulative_data) +
   geom_line(aes(x=Year, y=NSE_OR_Mortality), color="green", size=2) + 
   # Graph appearance
   theme(panel.border=element_blank(), panel.grid.major=element_blank(),
-panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Mortality (Odds ratio)") + ylim(0, 20) 
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold"), axis.title.x = element_text(margin = margin(t=15, r=0, b=0, l=0)), axis.title.y = element_text(margin = margin(t=0, r=15, b=0, l=0))) + xlab("Year") + ylab("Mortality (Odds ratio)") + ylim(0, 20) 
 cumulative_plot_mortality_multivariable
 ggplotly(cumulative_plot_mortality_multivariable)
 ```
@@ -169,7 +169,7 @@ cumulative_plot_charges <- ggplot(data=cumulative_data) +
   geom_line(aes(x=Year, y=NSE_charges_median), color="green", size=2) + 
   # Graph appearance
   theme(panel.border=element_blank(), panel.grid.major=element_blank(),
-panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Charges (2020 USA $)") + ylim(0, 75000) 
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold"), axis.title.x = element_text(margin = margin(t=15, r=0, b=0, l=0)), axis.title.y = element_text(margin = margin(t=0, r=15, b=0, l=0))) + xlab("Year") + ylab("Charges (2020 USA $)") + ylim(0, 75000) 
 cumulative_plot_charges
 ggplotly(cumulative_plot_charges)
 ```
@@ -208,7 +208,7 @@ cumulative_plot_charges_percentage <- ggplot(data=cumulative_data) +
   geom_line(aes(x=Year, y=NSE_percent_charges_change), color="green", size=2) + 
   # Graph appearance
   theme(panel.border=element_blank(), panel.grid.major=element_blank(),
-panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Changes in median charges (%)") + ylim(-5, 20) 
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold"), axis.title.x = element_text(margin = margin(t=15, r=0, b=0, l=0)), axis.title.y = element_text(margin = margin(t=0, r=15, b=0, l=0))) + xlab("Year") + ylab("Changes in median charges (%)") + ylim(-5, 20) 
 cumulative_plot_charges_percentage
 ggplotly(cumulative_plot_charges_percentage)
 ```
@@ -228,7 +228,7 @@ cumulative_plot_charges_difference <- ggplot(data=cumulative_data) +
   geom_line(aes(x=Year, y=NSE_charges_difference), color="green", size=2) + 
   # Graph appearance
   theme(panel.border=element_blank(), panel.grid.major=element_blank(),
-panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold")) + xlab("Year") + ylab("Difference in charges (2020 USA $)") + ylim(0, 45000) 
+panel.grid.minor=element_blank(), axis.line=element_blank(), panel.background = element_blank(), axis.text=element_text(size=16, face="bold"), axis.title=element_text(size=20, face="bold"), axis.title.x = element_text(margin = margin(t=15, r=0, b=0, l=0)), axis.title.y = element_text(margin = margin(t=0, r=15, b=0, l=0))) + xlab("Year") + ylab("Difference in charges (2020 USA $)") + ylim(0, 45000) 
 cumulative_plot_charges_difference
 ggplotly(cumulative_plot_charges_difference)
 ```
